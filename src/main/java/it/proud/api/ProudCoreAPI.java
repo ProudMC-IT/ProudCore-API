@@ -5,6 +5,8 @@ import it.proud.api.managers.IClanManager;
 import it.proud.api.managers.IPlayerManager;
 import it.proud.api.managers.ISchematicsManager;
 import it.proud.api.managers.IScoreboardManager;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -46,6 +48,8 @@ import org.apache.logging.log4j.Logger;
  * @version 1.0
  * @since   1.0
  */
+@Getter
+@RequiredArgsConstructor
 public final class ProudCoreAPI {
 
     private static final Logger log = LogManager.getLogger("ProudCore/API");
@@ -58,7 +62,6 @@ public final class ProudCoreAPI {
     private static final String GRAY   = "\u001B[90m";
     private static final String PREFIX = BOLD + CYAN + "[API]" + RESET + " ";
 
-    /** Volatile singleton — written once on {@link #register} and nulled on {@link #unregister}. */
     private static volatile ProudCoreAPI instance;
 
     private final IClanManager       clanManager;
@@ -66,31 +69,6 @@ public final class ProudCoreAPI {
     private final IPlayerManager     playerManager;
     private final IScoreboardManager scoreboardManager;
     private final ISchematicsManager  schematicsManager;
-
-    /**
-     * Constructs a new {@code ProudCoreAPI}.
-     *
-     * <p><b>Internal use only.</b> Called exclusively by ProudCore's bootstrap logic.</p>
-     *
-     * @param clanManager       must not be {@code null}
-     * @param charManager       must not be {@code null}
-     * @param playerManager     must not be {@code null}
-     * @param scoreboardManager the scoreboard manager, or {@code null} if the
-     *                          scoreboard module is disabled
-     * @param schematicsManager the schematics manager, or {@code null} if the
-     *                          schematics module is disabled
-     */
-    public ProudCoreAPI(IClanManager       clanManager,
-                        ICharManager       charManager,
-                        IPlayerManager     playerManager,
-                        IScoreboardManager scoreboardManager,
-                        ISchematicsManager schematicsManager) {
-        this.clanManager       = clanManager;
-        this.charManager       = charManager;
-        this.playerManager     = playerManager;
-        this.scoreboardManager = scoreboardManager;
-        this.schematicsManager = schematicsManager;
-    }
 
     /**
      * Publishes the given {@code ProudCoreAPI} instance as the global singleton.
@@ -135,27 +113,5 @@ public final class ProudCoreAPI {
         return instance;
     }
 
-    /** Returns the instance, or {@code null} if ProudCore is not loaded. */
     public static ProudCoreAPI getOrNull() { return instance; }
-
-    /** Returns the {@link IClanManager}. */
-    public IClanManager getClanManager()             { return clanManager;       }
-
-    /** Returns the {@link ICharManager}. */
-    public ICharManager getCharManager()             { return charManager;       }
-
-    /** Returns the {@link IPlayerManager}. */
-    public IPlayerManager getPlayerManager()         { return playerManager;     }
-
-    /**
-     * Returns the {@link IScoreboardManager}, or {@code null} if the
-     * scoreboard module is disabled in {@code config.yml}.
-     */
-    public IScoreboardManager getScoreboardManager() { return scoreboardManager; }
-
-    /**
-     * Returns the {@link ISchematicsManager}, or {@code null} if the
-     * schematics module is disabled in {@code config.yml}.
-     */
-    public ISchematicsManager getSchematicsManager() { return schematicsManager; }
 }

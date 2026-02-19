@@ -1,14 +1,23 @@
 package it.proud.api;
 
-import it.proud.api.managers.IClanManager;
 import it.proud.api.managers.ICharManager;
+import it.proud.api.managers.IClanManager;
 import it.proud.api.managers.IPlayerManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public final class ProudCoreAPI {
 
-    private static final Logger log = LogManager.getLogger("ProudCoreAPI");
+    private static final Logger log = LogManager.getLogger("ProudCore/API");
+
+    private static final String RESET  = "\u001B[0m";
+    private static final String BOLD   = "\u001B[1m";
+    private static final String GREEN  = "\u001B[32m";
+    private static final String RED    = "\u001B[31m";
+    private static final String CYAN   = "\u001B[36m";
+    private static final String GRAY   = "\u001B[90m";
+
+    private static final String PREFIX = BOLD + CYAN + "[API]" + RESET + " ";
 
     private static volatile ProudCoreAPI instance;
 
@@ -26,23 +35,23 @@ public final class ProudCoreAPI {
 
     public static void register(ProudCoreAPI api) {
         instance = api;
-        log.info("[ProudCoreAPI] ✔ API registered successfully.");
-        log.info("[ProudCoreAPI] ClanManager   → {}", api.clanManager.getClass().getSimpleName());
-        log.info("[ProudCoreAPI] CharManager   → {}", api.charManager.getClass().getSimpleName());
-        log.info("[ProudCoreAPI] PlayerManager → {}", api.playerManager.getClass().getSimpleName());
-        log.info("[ProudCoreAPI] Ready — external plugins can now call ProudCoreAPI.get()");
+        log.info("{}{}{}{}", PREFIX, GREEN, "✔ API registered successfully.", RESET);
+        log.info("{}ClanManager   → {}", PREFIX, api.clanManager.getClass().getSimpleName());
+        log.info("{}CharManager   → {}", PREFIX, api.charManager.getClass().getSimpleName());
+        log.info("{}PlayerManager → {}", PREFIX, api.playerManager.getClass().getSimpleName());
+        log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }
 
     public static void unregister() {
         if (instance != null) {
-            log.info("[ProudCoreAPI] API unregistered — ProudCore is shutting down.");
+            log.info("{}{}API unregistered — ProudCore is shutting down.{}", PREFIX, GRAY, RESET);
             instance = null;
         }
     }
 
     public static ProudCoreAPI get() {
         if (instance == null) {
-            log.error("[ProudCoreAPI] get() called but API is not registered! Is ProudCore loaded?");
+            log.error("{}{}{}{}", PREFIX, RED, "get() called but API is not registered! Is ProudCore loaded?", RESET);
             throw new IllegalStateException(
                     "ProudCoreAPI non disponibile — ProudCore è caricato?");
         }

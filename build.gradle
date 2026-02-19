@@ -1,3 +1,30 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+group = 'it.proud'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release.set(21)
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+}
+
 dependencies {
     compileOnly "io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT"
 }

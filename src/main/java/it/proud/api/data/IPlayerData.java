@@ -3,138 +3,177 @@ package it.proud.api.data;
 import java.util.UUID;
 
 /**
- * Represents persistent player data in the ProudCore system.
- * <p>
- * This interface provides access and modification of player-specific data,
- * including power, claim limits, and basic information. Data is automatically
- * persisted and synchronized with the database.
- * </p>
- * <p>
- * <b>Power System:</b><br>
- * Power is a resource that determines how many territorial claims a
- * player (and their clan) can maintain. Power increases over time and can
- * decrease with deaths.
- * </p>
- * <p>
- * <b>Usage example:</b>
- * </p>
+ * Persistent data record for a single player in the ProudCore system.
+ *
+ * <p>{@code IPlayerData} provides both read and write access to the player-specific
+ * values that feed into the clan and territory systems. All mutations are automatically
+ * validated and scheduled for persistence; callers do not need to invoke any explicit
+ * save method after modifying values through this interface.</p>
+ *
+ * <h2>Power system</h2>
+ * <p>Power is the core resource that controls territorial influence:</p>
+ * <ul>
+ *   <li>Each player has a <em>current power</em> value capped by their
+ *       <em>maximum power</em>.</li>
+ *   <li>A clan's total power is the sum of all its members' current power values,
+ *       and governs how many chunks the clan may claim.</li>
+ *   <li>Power is reduced by {@link #takePower(double)} on death and restored over
+ *       time or by administrative action.</li>
+ *   <li>Both the current and maximum values can be overridden programmatically
+ *       (e.g. by rank plugins or admin commands) via the setter methods.</li>
+ * </ul>
+ *
+ * <h2>Chunk limit</h2>
+ * <p>In addition to power-based claim limits, each player may have a personal
+ * chunk limit ({@link #getChunkLimit()}) that acts as a hard cap on the number of
+ * chunks they can individually hold, independent of power.</p>
+ *
+ * <h2>Usage example</h2>
  * <pre>{@code
- * IPlayerData data = playerManager.getPlayer(uuid);
- * double currentPower = data.getPower();
- * data.addPower(10.0);
- * System.out.println("Power: " + data.getPower() + "/" + data.getMaxPower());
+ * IPlayerData data = playerManager.getPlayer(playerUuid);
+ *
+ * System.out.printf("Power: %.1f / %.1f%n", data.getPower(), data.getMaxPower());
+ *
+ * // Reward a player on a kill streak
+ * data.addPower(5.0);
+ *
+ * // Penalise a player on death
+ * data.takePower(3.0);
  * }</pre>
  *
- * @author ProudCore Team
+ * @author  ProudCore Team
  * @version 1.0
- * @since 1.0
+ * @since   1.0
+ * @see     it.proud.api.managers.IPlayerManager
+ * @see     IClan
  */
 public interface IPlayerData {
+
     /**
-     * Gets the player's unique UUID.
+     * Returns the player's unique identifier.
      *
-     * @return the player's UUID
+     * <p>This UUID is immutable and corresponds directly to the Bukkit/Mojang
+     * player UUID. It is used as the primary key for all storage and cache lookups.</p>
+     *
+     * @return the non-{@code null} UUID that uniquely identifies this player
      */
     UUID getUuid();
-    
+
     /**
-     * Gets the player's current name.
-     * <p>
-     * This name is automatically updated when the player
-     * connects to the server.
-     * </p>
+     * Returns the player's most recently known username.
      *
-     * @return the player's name
+     * <p>This value is refreshed automatically every time the player connects to
+     * the server. It may therefore lag behind by one session for players who have
+     * changed their Minecraft username since their last login.</p>
+     *
+     * @return the non-{@code null} last-known username of the player
      */
     String getName();
-    
+
     /**
-     * Gets the player's current power.
-     * <p>
-     * Power contributes to the clan's total power and determines the ability
-     * to claim territory. Cannot exceed {@link #getMaxPower()}.
-     * </p>
+     * Returns the player's current power.
      *
-     * @return the current power value
+     * <p>The value is always in the range {@code [0, getMaxPower()]}. It represents
+     * the player's individual contribution to their clan's total power pool, and
+     * therefore directly affects how many territorial chunks the clan can hold.</p>
+     *
+     * @return the current power value; always {@code >= 0} and {@code <= getMaxPower()}
+     * @see #getMaxPower()
      */
     double getPower();
-    
+
     /**
-     * Gets the player's maximum power.
-     * <p>
-     * This is the upper limit of power the player can accumulate.
-     * Can be modified by permissions or admin commands.
-     * </p>
+     * Returns the player's maximum power cap.
      *
-     * @return the maximum power value
+     * <p>Current power can never exceed this value. The cap can be raised or
+     * lowered by permission plugins, rank systems, or direct administrative
+     * calls to {@link #setMaxPower(double)}.</p>
+     *
+     * @return the maximum power value; always {@code > 0}
+     * @see #getPower()
      */
     double getMaxPower();
-    
+
     /**
-     * Gets the player's claimable chunk limit.
-     * <p>
-     * Represents the maximum number of chunks this player can
-     * personally claim, independent of power. Used for
-     * personal claim systems.
-     * </p>
+     * Returns the maximum number of chunks this player is personally allowed
+     * to claim.
      *
-     * @return the claimable chunk limit
+     * <p>This is an independent cap that operates alongside (but separately from)
+     * the power-based claim limit. It is typically managed by permission tiers or
+     * donor rank plugins. A value of {@code 0} means the player cannot personally
+     * claim any chunks.</p>
+     *
+     * @return the personal chunk-claim limit; always {@code >= 0}
      */
     int getChunkLimit();
-    
+
     /**
-     * Sets the player's current power.
-     * <p>
-     * The value will be automatically clamped between 0 and {@link #getMaxPower()}.
-     * Changes are automatically persisted.
-     * </p>
+     * Sets the player's current power to the specified value.
      *
-     * @param power the new power value
+     * <p>The provided value is automatically clamped to the range
+     * {@code [0, getMaxPower()]}: values below zero are treated as zero, and
+     * values above the maximum are silently reduced to the maximum. The change is
+     * scheduled for persistence automatically.</p>
+     *
+     * @param power the desired power value; clamped to {@code [0, getMaxPower()]}
      */
     void setPower(double power);
-    
+
     /**
-     * Sets the player's maximum power.
-     * <p>
-     * Modifies the upper limit of accumulable power. If the current
-     * power exceeds the new maximum, it is automatically reduced.
-     * </p>
+     * Sets the player's maximum power cap.
      *
-     * @param maxPower the new maximum power value
+     * <p>If the player's current power exceeds the new maximum, it is automatically
+     * reduced to match. Setting this value below the current power effectively
+     * applies an immediate {@link #setPower(double)} as a side effect. Changes are
+     * persisted automatically.</p>
+     *
+     * @param maxPower the new maximum power; must be {@code > 0}
      */
     void setMaxPower(double maxPower);
-    
+
     /**
-     * Sets the claimable chunk limit.
-     * <p>
-     * Modifies the maximum number of chunks the player can claim.
-     * Typically used by admin commands or permission systems.
-     * </p>
+     * Sets the player's personal chunk-claim limit.
      *
-     * @param chunkLimit the new chunk limit
+     * <p>This directly overrides the current limit. Typically used by rank or
+     * permission plugins to grant additional claiming capacity. The change is
+     * persisted automatically.</p>
+     *
+     * @param chunkLimit the new chunk-claim limit; must be {@code >= 0}
      */
     void setChunkLimit(int chunkLimit);
-    
+
     /**
-     * Adds power to the player.
-     * <p>
-     * Increases the current power by the specified amount, up to
-     * the limit of {@link #getMaxPower()}. Negative values are ignored.
-     * </p>
+     * Increases the player's current power by the given amount.
      *
-     * @param amount the amount of power to add (must be positive)
+     * <p>The resulting power is capped at {@link #getMaxPower()}; any surplus is
+     * silently discarded. Negative or zero values are ignored and produce no change.
+     * The update is persisted automatically.</p>
+     *
+     * <pre>{@code
+     * // Grant 10 power on capturing a flag
+     * data.addPower(10.0);
+     * }</pre>
+     *
+     * @param amount the amount to add; values {@code <= 0} are ignored
+     * @see #takePower(double)
      */
     void addPower(double amount);
-    
+
     /**
-     * Removes power from the player.
-     * <p>
-     * Decreases the current power by the specified amount, with a minimum
-     * of 0. Typically called when a player dies. Negative values
-     * are ignored.
-     * </p>
+     * Decreases the player's current power by the given amount.
      *
-     * @param amount the amount of power to remove (must be positive)
+     * <p>The resulting power cannot fall below {@code 0}; any excess reduction is
+     * silently clamped. Negative or zero values are ignored and produce no change.
+     * The update is persisted automatically. This method is typically called in
+     * response to player death events.</p>
+     *
+     * <pre>{@code
+     * // Penalise 3 power on death
+     * data.takePower(3.0);
+     * }</pre>
+     *
+     * @param amount the amount to remove; values {@code <= 0} are ignored
+     * @see #addPower(double)
      */
     void takePower(double amount);
 }

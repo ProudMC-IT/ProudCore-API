@@ -3,6 +3,7 @@ package it.proud.api;
 import it.proud.api.managers.ICharManager;
 import it.proud.api.managers.IClanManager;
 import it.proud.api.managers.IPlayerManager;
+import it.proud.api.managers.ISchematicsManager;
 import it.proud.api.managers.IScoreboardManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -64,6 +65,7 @@ public final class ProudCoreAPI {
     private final ICharManager       charManager;
     private final IPlayerManager     playerManager;
     private final IScoreboardManager scoreboardManager;
+    private final ISchematicsManager  schematicsManager;
 
     /**
      * Constructs a new {@code ProudCoreAPI}.
@@ -75,15 +77,19 @@ public final class ProudCoreAPI {
      * @param playerManager     must not be {@code null}
      * @param scoreboardManager the scoreboard manager, or {@code null} if the
      *                          scoreboard module is disabled
+     * @param schematicsManager the schematics manager, or {@code null} if the
+     *                          schematics module is disabled
      */
     public ProudCoreAPI(IClanManager       clanManager,
                         ICharManager       charManager,
                         IPlayerManager     playerManager,
-                        IScoreboardManager scoreboardManager) {
+                        IScoreboardManager scoreboardManager,
+                        ISchematicsManager schematicsManager) {
         this.clanManager       = clanManager;
         this.charManager       = charManager;
         this.playerManager     = playerManager;
         this.scoreboardManager = scoreboardManager;
+        this.schematicsManager = schematicsManager;
     }
 
     /**
@@ -99,6 +105,8 @@ public final class ProudCoreAPI {
         log.info("{}PlayerManager     → {}", PREFIX, api.playerManager.getClass().getSimpleName());
         log.info("{}ScoreboardManager → {}", PREFIX,
                 api.scoreboardManager != null ? api.scoreboardManager.getClass().getSimpleName() : "disabled");
+        log.info("{}SchematicsManager → {}", PREFIX,
+                api.schematicsManager != null ? api.schematicsManager.getClass().getSimpleName() : "disabled");
         log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }
 
@@ -130,7 +138,6 @@ public final class ProudCoreAPI {
     /** Returns the instance, or {@code null} if ProudCore is not loaded. */
     public static ProudCoreAPI getOrNull() { return instance; }
 
-
     /** Returns the {@link IClanManager}. */
     public IClanManager getClanManager()             { return clanManager;       }
 
@@ -145,4 +152,10 @@ public final class ProudCoreAPI {
      * scoreboard module is disabled in {@code config.yml}.
      */
     public IScoreboardManager getScoreboardManager() { return scoreboardManager; }
+
+    /**
+     * Returns the {@link ISchematicsManager}, or {@code null} if the
+     * schematics module is disabled in {@code config.yml}.
+     */
+    public ISchematicsManager getSchematicsManager() { return schematicsManager; }
 }

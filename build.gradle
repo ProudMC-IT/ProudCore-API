@@ -1,0 +1,14 @@
+dependencies {
+    compileOnly "io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT"
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId    = 'it.proud'
+            artifactId = 'proudcore-api'
+            version    = '1.0.0'
+            from components.java
+        }
+    }
+}

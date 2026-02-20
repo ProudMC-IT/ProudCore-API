@@ -1,18 +1,21 @@
 package it.proud.api;
 
 import it.proud.api.managers.*;
+import it.proud.api.module.IModuleRegistry;
+import it.proud.api.module.IProudModule;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.Optional;
 
 /**
  * Central access point for the ProudCore plugin API.
  *
  * <p>This class exposes a thread-safe singleton that grants external plugins
  * unified access to all ProudCore subsystems: clan management, custom characters,
- * player data, and scoreboards. The instance is created and registered by ProudCore
- * itself during startup; external code must never instantiate this class directly.</p>
+ * player data, scoreboards, and the external module registry.</p>
  *
  * <h2>Lifecycle</h2>
  * <ol>
@@ -30,6 +33,7 @@ import org.apache.logging.log4j.Logger;
  * ICharManager       chars   = api.getCharManager();
  * IPlayerManager     players = api.getPlayerManager();
  * IScoreboardManager sb      = api.getScoreboardManager();
+ * IModuleRegistry    reg     = api.getModuleRegistry();
  * }</pre>
  *
  * <h2>Safe usage (optional dependency)</h2>
@@ -37,6 +41,14 @@ import org.apache.logging.log4j.Logger;
  * ProudCoreAPI api = ProudCoreAPI.getOrNull();
  * if (api != null) {
  *     // ProudCore is available — proceed safely
+ * }
+ * }</pre>
+ *
+ * <h2>Registering an external module</h2>
+ * <pre>{@code
+ * @EventHandler
+ * public void onCoreReady(ProudCoreReadyEvent event) {
+ *     event.getRegistry().register(new MyModule());
  * }
  * }</pre>
  *
@@ -66,6 +78,7 @@ public final class ProudCoreAPI {
     private final IScoreboardManager scoreboardManager;
     private final ISchematicsManager schematicsManager;
     private final IEventsManager     eventsManager;
+    private final IModuleRegistry    moduleRegistry;
 
     /**
      * Publishes the given {@code ProudCoreAPI} instance as the global singleton.
@@ -84,6 +97,7 @@ public final class ProudCoreAPI {
                 api.schematicsManager != null ? api.schematicsManager.getClass().getSimpleName() : "disabled");
         log.info("{}EventsManager     → {}", PREFIX,
                 api.eventsManager != null ? api.eventsManager.getClass().getSimpleName() : "disabled");
+        log.info("{}ModuleRegistry    → {}", PREFIX, api.moduleRegistry.getClass().getSimpleName());
         log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }
 
@@ -112,5 +126,25 @@ public final class ProudCoreAPI {
         return instance;
     }
 
-    public static ProudCoreAPI getOrNull() { return instance; }
+    public static ProudCoreAPI getOrNull() {
+        return instance;
+    }
+
+    /**
+     * Typed shortcut for retrieving a registered external module.
+     *
+     * <pre>{@code
+     * ProudCoreAPI.get()
+     *     .getModule("myplugin:arena", IArenaModule.class)
+     *     .ifPresent(m -> m.startArena("arena1"));
+     * }</pre>
+     *
+     * @param moduleId the module's unique id
+     * @param type     the expected module type
+     * @param <T>      the module type
+     * @return an {@link Optional} containing the module, or empty
+     */
+    public <T extends IProudModule> Optional<T> getModule(String moduleId, Class<T> type) {
+        return moduleRegistry.getModule(moduleId, type);
+    }
 }

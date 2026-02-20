@@ -1,10 +1,6 @@
 package it.proud.api;
 
-import it.proud.api.managers.ICharManager;
-import it.proud.api.managers.IClanManager;
-import it.proud.api.managers.IPlayerManager;
-import it.proud.api.managers.ISchematicsManager;
-import it.proud.api.managers.IScoreboardManager;
+import it.proud.api.managers.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
@@ -68,7 +64,8 @@ public final class ProudCoreAPI {
     private final ICharManager       charManager;
     private final IPlayerManager     playerManager;
     private final IScoreboardManager scoreboardManager;
-    private final ISchematicsManager  schematicsManager;
+    private final ISchematicsManager schematicsManager;
+    private final IEventsManager     eventsManager;
 
     /**
      * Publishes the given {@code ProudCoreAPI} instance as the global singleton.
@@ -85,6 +82,8 @@ public final class ProudCoreAPI {
                 api.scoreboardManager != null ? api.scoreboardManager.getClass().getSimpleName() : "disabled");
         log.info("{}SchematicsManager → {}", PREFIX,
                 api.schematicsManager != null ? api.schematicsManager.getClass().getSimpleName() : "disabled");
+        log.info("{}EventsManager     → {}", PREFIX,
+                api.eventsManager != null ? api.eventsManager.getClass().getSimpleName() : "disabled");
         log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }
 

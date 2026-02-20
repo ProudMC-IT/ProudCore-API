@@ -1,0 +1,45 @@
+name: JitPack Build Status
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  check-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait for JitPack build
+        run: |
+          TAG=${GITHUB_REF_NAME}
+          REPO=${GITHUB_REPOSITORY}
+          BUILD_URL="https://jitpack.io/com/github/${REPO}/${TAG}/build.log"
+
+          echo "Checking build for $TAG"
+
+          for i in {1..30}; do
+            RESPONSE=$(curl -s $BUILD_URL)
+
+            if echo "$RESPONSE" | grep -q "BUILD SUCCESS"; then
+              STATUS="✅ BUILD SUCCESS"
+              break
+            fi
+
+            if echo "$RESPONSE" | grep -q "BUILD FAILED"; then
+              STATUS="❌ BUILD FAILED"
+              break
+            fi
+
+            echo "Still building..."
+            sleep 20
+          done
+
+          if [ -z "$STATUS" ]; then
+            STATUS="⚠️ BUILD STATUS UNKNOWN"
+          fi
+
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "{\"content\":\"📦 JitPack build per **${TAG}**\n${STATUS}\n🔗 https://jitpack.io/#${REPO}/${TAG}\"}" \
+          ${{ secrets.DISCORD_WEBHOOK }}

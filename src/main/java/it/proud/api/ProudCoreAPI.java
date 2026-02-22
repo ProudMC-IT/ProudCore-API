@@ -79,6 +79,7 @@ public final class ProudCoreAPI {
     private final ISchematicsManager schematicsManager;
     private final IEventsManager     eventsManager;
     private final IClanKillsManager  clanKillsManager;
+    private final IPlayerStatsManager  playerStatsManager;
     private final IModuleRegistry    moduleRegistry;
 
     /**
@@ -92,6 +93,7 @@ public final class ProudCoreAPI {
         log.info("{}ClanManager       → {}", PREFIX, api.clanManager.getClass().getSimpleName());
         log.info("{}CharManager       → {}", PREFIX, api.charManager.getClass().getSimpleName());
         log.info("{}PlayerManager     → {}", PREFIX, api.playerManager.getClass().getSimpleName());
+        log.info("{}PlayerStatsManager → {}", PREFIX, api.playerStatsManager.getClass().getSimpleName());
         log.info("{}ScoreboardManager → {}", PREFIX,
                 api.scoreboardManager != null ? api.scoreboardManager.getClass().getSimpleName() : "disabled");
         log.info("{}SchematicsManager → {}", PREFIX,

@@ -78,6 +78,7 @@ public final class ProudCoreAPI {
     private final IScoreboardManager scoreboardManager;
     private final ISchematicsManager schematicsManager;
     private final IEventsManager     eventsManager;
+    private final IClanKillsManager  clanKillsManager;
     private final IModuleRegistry    moduleRegistry;
 
     /**
@@ -97,6 +98,8 @@ public final class ProudCoreAPI {
                 api.schematicsManager != null ? api.schematicsManager.getClass().getSimpleName() : "disabled");
         log.info("{}EventsManager     → {}", PREFIX,
                 api.eventsManager != null ? api.eventsManager.getClass().getSimpleName() : "disabled");
+        log.info("{}ClanKillsManager  → {}", PREFIX,
+                api.clanKillsManager != null ? api.clanKillsManager.getClass().getSimpleName() : "disabled");
         log.info("{}ModuleRegistry    → {}", PREFIX, api.moduleRegistry.getClass().getSimpleName());
         log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }

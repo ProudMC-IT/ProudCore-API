@@ -29,12 +29,13 @@ import java.util.Optional;
  * <pre>{@code
  * ProudCoreAPI api = ProudCoreAPI.get();
  *
- * IClanManager       clans   = api.getClanManager();
- * ICharManager       chars   = api.getCharManager();
- * IPlayerManager     players = api.getPlayerManager();
- * IEconomyManager    eco     = api.getEconomyManager();
- * IScoreboardManager sb      = api.getScoreboardManager();
- * IModuleRegistry    reg     = api.getModuleRegistry();
+ * IClanManager       clans    = api.getClanManager();
+ * ICharManager       chars    = api.getCharManager();
+ * IPlayerManager     players  = api.getPlayerManager();
+ * IEconomyManager    eco      = api.getEconomyManager();
+ * IScoreboardManager sb       = api.getScoreboardManager();
+ * IScoreboardRegistry sbReg   = api.getScoreboardRegistry();
+ * IModuleRegistry    reg      = api.getModuleRegistry();
  * }</pre>
  *
  * @author  ProudCore Team
@@ -61,6 +62,7 @@ public final class ProudCoreAPI {
     private final ICharManager        charManager;
     private final IPlayerManager      playerManager;
     private final IScoreboardManager  scoreboardManager;
+    private final IScoreboardRegistry scoreboardRegistry;
     private final ISchematicsManager  schematicsManager;
     private final IEventsManager      eventsManager;
     private final IClanKillsManager   clanKillsManager;
@@ -83,6 +85,8 @@ public final class ProudCoreAPI {
         log.info("{}EconomyManager     → {}", PREFIX, api.economyManager.getClass().getSimpleName());
         log.info("{}ScoreboardManager  → {}", PREFIX,
                 api.scoreboardManager != null ? api.scoreboardManager.getClass().getSimpleName() : "disabled");
+        log.info("{}ScoreboardRegistry → {}", PREFIX,
+                api.scoreboardRegistry != null ? api.scoreboardRegistry.getClass().getSimpleName() : "disabled");
         log.info("{}SchematicsManager  → {}", PREFIX,
                 api.schematicsManager != null ? api.schematicsManager.getClass().getSimpleName() : "disabled");
         log.info("{}EventsManager      → {}", PREFIX,

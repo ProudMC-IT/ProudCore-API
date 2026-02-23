@@ -15,7 +15,7 @@ import java.util.Optional;
  *
  * <p>This class exposes a thread-safe singleton that grants external plugins
  * unified access to all ProudCore subsystems: clan management, custom characters,
- * player data, scoreboards, and the external module registry.</p>
+ * player data, scoreboards, economy, and the external module registry.</p>
  *
  * <h2>Lifecycle</h2>
  * <ol>
@@ -32,24 +32,9 @@ import java.util.Optional;
  * IClanManager       clans   = api.getClanManager();
  * ICharManager       chars   = api.getCharManager();
  * IPlayerManager     players = api.getPlayerManager();
+ * IEconomyManager    eco     = api.getEconomyManager();
  * IScoreboardManager sb      = api.getScoreboardManager();
  * IModuleRegistry    reg     = api.getModuleRegistry();
- * }</pre>
- *
- * <h2>Safe usage (optional dependency)</h2>
- * <pre>{@code
- * ProudCoreAPI api = ProudCoreAPI.getOrNull();
- * if (api != null) {
- *     // ProudCore is available — proceed safely
- * }
- * }</pre>
- *
- * <h2>Registering an external module</h2>
- * <pre>{@code
- * @EventHandler
- * public void onCoreReady(ProudCoreReadyEvent event) {
- *     event.getRegistry().register(new MyModule());
- * }
  * }</pre>
  *
  * @author  ProudCore Team
@@ -72,15 +57,16 @@ public final class ProudCoreAPI {
 
     private static volatile ProudCoreAPI instance;
 
-    private final IClanManager       clanManager;
-    private final ICharManager       charManager;
-    private final IPlayerManager     playerManager;
-    private final IScoreboardManager scoreboardManager;
-    private final ISchematicsManager schematicsManager;
-    private final IEventsManager     eventsManager;
-    private final IClanKillsManager  clanKillsManager;
-    private final IPlayerStatsManager  playerStatsManager;
-    private final IModuleRegistry    moduleRegistry;
+    private final IClanManager        clanManager;
+    private final ICharManager        charManager;
+    private final IPlayerManager      playerManager;
+    private final IScoreboardManager  scoreboardManager;
+    private final ISchematicsManager  schematicsManager;
+    private final IEventsManager      eventsManager;
+    private final IClanKillsManager   clanKillsManager;
+    private final IPlayerStatsManager playerStatsManager;
+    private final IEconomyManager     economyManager;
+    private final IModuleRegistry     moduleRegistry;
 
     /**
      * Publishes the given {@code ProudCoreAPI} instance as the global singleton.
@@ -90,25 +76,25 @@ public final class ProudCoreAPI {
     public static void register(ProudCoreAPI api) {
         instance = api;
         log.info("{}{}{}{}", PREFIX, GREEN, "✔ API registered successfully.", RESET);
-        log.info("{}ClanManager       → {}", PREFIX, api.clanManager.getClass().getSimpleName());
-        log.info("{}CharManager       → {}", PREFIX, api.charManager.getClass().getSimpleName());
-        log.info("{}PlayerManager     → {}", PREFIX, api.playerManager.getClass().getSimpleName());
+        log.info("{}ClanManager        → {}", PREFIX, api.clanManager.getClass().getSimpleName());
+        log.info("{}CharManager        → {}", PREFIX, api.charManager.getClass().getSimpleName());
+        log.info("{}PlayerManager      → {}", PREFIX, api.playerManager.getClass().getSimpleName());
         log.info("{}PlayerStatsManager → {}", PREFIX, api.playerStatsManager.getClass().getSimpleName());
-        log.info("{}ScoreboardManager → {}", PREFIX,
+        log.info("{}EconomyManager     → {}", PREFIX, api.economyManager.getClass().getSimpleName());
+        log.info("{}ScoreboardManager  → {}", PREFIX,
                 api.scoreboardManager != null ? api.scoreboardManager.getClass().getSimpleName() : "disabled");
-        log.info("{}SchematicsManager → {}", PREFIX,
+        log.info("{}SchematicsManager  → {}", PREFIX,
                 api.schematicsManager != null ? api.schematicsManager.getClass().getSimpleName() : "disabled");
-        log.info("{}EventsManager     → {}", PREFIX,
+        log.info("{}EventsManager      → {}", PREFIX,
                 api.eventsManager != null ? api.eventsManager.getClass().getSimpleName() : "disabled");
-        log.info("{}ClanKillsManager  → {}", PREFIX,
+        log.info("{}ClanKillsManager   → {}", PREFIX,
                 api.clanKillsManager != null ? api.clanKillsManager.getClass().getSimpleName() : "disabled");
-        log.info("{}ModuleRegistry    → {}", PREFIX, api.moduleRegistry.getClass().getSimpleName());
+        log.info("{}ModuleRegistry     → {}", PREFIX, api.moduleRegistry.getClass().getSimpleName());
         log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }
 
     /**
      * Retracts the global singleton and signals that ProudCore is shutting down.
-     * This method is a no-op if the API was never registered.
      */
     public static void unregister() {
         if (instance != null) {
@@ -121,7 +107,7 @@ public final class ProudCoreAPI {
      * Returns the global {@code ProudCoreAPI} instance.
      *
      * @return the current, non-{@code null} instance
-     * @throws IllegalStateException if the API has not been registered or has been unregistered
+     * @throws IllegalStateException if the API has not been registered
      */
     public static ProudCoreAPI get() {
         if (instance == null) {
@@ -137,12 +123,6 @@ public final class ProudCoreAPI {
 
     /**
      * Typed shortcut for retrieving a registered external module.
-     *
-     * <pre>{@code
-     * ProudCoreAPI.get()
-     *     .getModule("myplugin:arena", IArenaModule.class)
-     *     .ifPresent(m -> m.startArena("arena1"));
-     * }</pre>
      *
      * @param moduleId the module's unique id
      * @param type     the expected module type

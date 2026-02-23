@@ -1,6 +1,7 @@
 package it.proud.api.module;
 
 import it.proud.api.ProudCoreAPI;
+import it.proud.api.managers.IDatabaseAccess;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -10,14 +11,22 @@ import java.io.File;
  * Contextual handle passed to a module during {@link IProudModule#onEnable(ProudModuleContext)}.
  *
  * <p>Provides access to the ProudCore API, a dedicated logger, an isolated data folder,
- * and the core {@link JavaPlugin} instance needed to register Bukkit listeners, tasks,
- * and commands.</p>
+ * the core {@link JavaPlugin} instance, and shared database access via
+ * {@link IDatabaseAccess}.</p>
  *
  * <h2>Usage</h2>
  * <pre>{@code
  * public void onEnable(ProudModuleContext ctx) {
- *     this.api    = ctx.getApi();
- *     this.logger = ctx.getLogger();
+ *     super.onEnable(ctx);
+ *     this.db = ctx.getDatabaseAccess();
+ *
+ *     db.createTableIfNotExists("""
+ *         CREATE TABLE IF NOT EXISTS mymod_data (
+ *             uuid  VARCHAR(36) NOT NULL PRIMARY KEY,
+ *             value INT         NOT NULL DEFAULT 0
+ *         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+ *     """);
+ *
  *     ctx.getCorePlugin().getServer().getPluginManager()
  *         .registerEvents(new MyListener(), ctx.getCorePlugin());
  * }
@@ -62,4 +71,34 @@ public interface ProudModuleContext {
      * @return the non-{@code null} ProudCore plugin instance
      */
     JavaPlugin getCorePlugin();
+
+    /**
+     * Returns a {@link IDatabaseAccess} handle backed by ProudCore's shared
+     * HikariCP connection pool.
+     *
+     * <p>Modules should use this instead of opening their own JDBC connections.
+     * The pool is already configured, warmed up, and monitored by ProudCore.
+     * Modules simply borrow connections and run queries through the provided
+     * helper methods.</p>
+     *
+     * <p>Best practice: save the reference in {@code onEnable} and create your
+     * tables immediately:</p>
+     * <pre>{@code
+     * private IDatabaseAccess db;
+     *
+     * public void onEnable(ProudModuleContext ctx) {
+     *     super.onEnable(ctx);
+     *     db = ctx.getDatabaseAccess();
+     *     db.createTableIfNotExists("""
+     *         CREATE TABLE IF NOT EXISTS mymod_scores (
+     *             uuid  VARCHAR(36) NOT NULL PRIMARY KEY,
+     *             score INT         NOT NULL DEFAULT 0
+     *         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+     *     """);
+     * }
+     * }</pre>
+     *
+     * @return the non-{@code null} {@link IDatabaseAccess} for this module
+     */
+    IDatabaseAccess getDatabaseAccess();
 }

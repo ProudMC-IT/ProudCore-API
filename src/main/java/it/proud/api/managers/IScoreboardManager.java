@@ -48,25 +48,6 @@ public interface IScoreboardManager {
     void setMainScoreboard(Player player);
 
     /**
-     * Sets the player's sidebar to the {@code core:pre_lobby} template.
-     *
-     * @param player the target player; must not be {@code null}
-     */
-    void setPreLobbyScoreboard(Player player);
-
-    /**
-     * Sets the player's sidebar to the {@code core:wave_<waveName>} template.
-     *
-     * <p>If no scoreboard data is found for {@code waveName}, the sidebar is
-     * left unchanged and a warning is logged.</p>
-     *
-     * @param player   the target player; must not be {@code null}
-     * @param waveName the wave identifier matching a key in
-     *                 {@code scoreboard/config.yml}; must not be {@code null}
-     */
-    void setWaveScoreboard(Player player, String waveName);
-
-    /**
      * Sets the player's sidebar to any template registered in the
      * {@link IScoreboardRegistry}, including both core and external templates.
      *

@@ -10,7 +10,7 @@
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 ![Build](https://img.shields.io/badge/Build-JitPack-blue?logo=github)
 
-> Integrate your plugins seamlessly with ProudCore's clan system, economy, scoreboards, player stats, schematics and much more — all through a clean, well-documented API.
+> Integrate your plugins seamlessly with ProudCore's clan system, economy, scoreboards, player stats, homes/warps, teleport requests, vanish/god mode, schematics and much more — all through a clean, well-documented API.
 
 </div>
 
@@ -35,6 +35,12 @@
     - [IClanKillsManager](#iclankillsmanager)
     - [IScoreboardManager](#iscoreboardmanager)
     - [IScoreboardRegistry](#iscoreboardregistry)
+    - [IHomeManager](#ihomemanager)
+    - [IWarpManager](#iwarpmanager)
+    - [ISpawnManager](#ispawnmanager)
+    - [ITpaManager](#itpamanager)
+    - [IVanishManager](#ivanishmanager)
+    - [IGodManager](#igodmanager)
 - [Module System](#-module-system)
     - [Creating a Module](#creating-a-module)
     - [Module Lifecycle](#module-lifecycle)
@@ -65,6 +71,12 @@
 | 🎨 **Characters** | Register and resolve custom Unicode glyphs for texture packs |
 | 🗺️ **Schematics** | Query pasted schematic locations and block lists |
 | 📋 **Scoreboards** | Display and register custom scoreboard templates |
+| 🏠 **Homes** | Create, delete, and teleport to per-player named homes |
+| 🌀 **Warps** | Create and manage global warp points |
+| 📍 **Spawn** | Read and set the server-wide spawn location |
+| ✨ **TPA** | Manage `/tpa` and `/tpahere` requests with expiry |
+| 👻 **Vanish** | Hide/reveal players from others (in-memory state) |
+| 🛡️ **God Mode** | Toggle per-player invulnerability (in-memory state) |
 | 🧩 **Modules** | Register full external modules with services, DB access, and lifecycle management |
 
 ---
@@ -156,6 +168,12 @@ ProudCoreAPI (singleton)
 ├── IClanKillsManager     → Clan & player kill counters
 ├── IScoreboardManager    → Sidebar scoreboard control per-player
 ├── IScoreboardRegistry   → Scoreboard template registry (core + external)
+├── IHomeManager          → Per-player named homes
+├── IWarpManager          → Global warp registry
+├── ISpawnManager         → Server-wide spawn point
+├── ITpaManager           → Teleport request sessions
+├── IVanishManager        → Per-player vanish state
+├── IGodManager           → Per-player god mode
 └── IModuleRegistry       → External module lifecycle management
 ```
 
@@ -287,6 +305,11 @@ stats.getLastUpdated();       // unix-millis of last snapshot
 statsManager.refreshStats(uuid);
 statsManager.refreshAll();
 
+// Cache control
+boolean cached = statsManager.isCached(uuid);
+statsManager.evict(uuid);
+Map<UUID, ? extends IPlayerStats> allCached = statsManager.getAllCached();
+
 // Shortcuts
 statsManager.getKills(uuid);
 statsManager.getDeaths(uuid);
@@ -313,6 +336,8 @@ coins.namePlural();      // "Coins"
 coins.symbol();          // "⛃"
 coins.startingBalance(); // default balance on first join
 coins.maxBalance();      // -1 = unlimited
+coins.decimalPlaces();   // e.g. 0 or 2
+coins.vaultPrimary();    // true if Vault-bridged
 coins.format(1250.0);    // "⛃ 1,250"
 
 // --- PLAYER BALANCES ---
@@ -460,6 +485,125 @@ registry.unregisterProvider("mymod");
 
 // Reload core templates (external providers unaffected)
 registry.reloadCoreTemplates();
+```
+
+---
+
+### IHomeManager
+
+Manage per-player named homes (persisted automatically).
+
+```java
+IHomeManager homes = ProudCoreAPI.get().getHomeManager();
+
+// Set or overwrite a home
+homes.setHome(player.getUniqueId(), "base", player.getLocation());
+
+// Teleport to a home
+Location home = homes.getHome(player.getUniqueId(), "base");
+if (home != null) player.teleport(home);
+
+// List and delete
+Map<String, Location> all = homes.getHomes(player.getUniqueId());
+int count = homes.getHomeCount(player.getUniqueId());
+boolean removed = homes.deleteHome(player.getUniqueId(), "base");
+```
+
+---
+
+### IWarpManager
+
+Manage global warp points (shared across all players, persisted automatically).
+
+```java
+IWarpManager warps = ProudCoreAPI.get().getWarpManager();
+
+warps.setWarp("market", player.getLocation());
+Location market = warps.getWarp("market");
+
+boolean exists = warps.hasWarp("market");
+int total = warps.getWarpCount();
+
+warps.deleteWarp("oldbase");
+```
+
+---
+
+### ISpawnManager
+
+Access and update the server-wide spawn location.
+
+```java
+ISpawnManager spawn = ProudCoreAPI.get().getSpawnManager();
+
+Location loc = spawn.getSpawn();
+if (loc != null) player.teleport(loc);
+
+spawn.setSpawn(player.getLocation());
+boolean configured = spawn.isSpawnSet();
+```
+
+---
+
+### ITpaManager
+
+Create and resolve `/tpa` and `/tpahere` requests (in-memory, time-limited).
+
+```java
+ITpaManager tpa = ProudCoreAPI.get().getTpaManager();
+
+// Create a request that expires after 60 seconds
+tpa.createRequest(sender.getUniqueId(), target.getUniqueId(),
+        ITpaManager.RequestType.TO_TARGET, Duration.ofSeconds(60));
+
+// Accept: fetch pending request for target
+ITpaManager.TpaRequest req = tpa.getForTarget(target.getUniqueId());
+if (req != null && !req.isExpired()) {
+    tpa.clearRequest(req.from(), req.to());
+    // perform teleport...
+}
+
+// Cancel by sender or target
+tpa.clearBySender(sender.getUniqueId());
+tpa.clearByTarget(target.getUniqueId());
+```
+
+---
+
+### IVanishManager
+
+Hide or reveal players from others (not persisted across restarts).
+
+```java
+IVanishManager vanish = ProudCoreAPI.get().getVanishManager();
+
+boolean nowVanished = vanish.toggle(player);
+boolean isHidden = vanish.isVanished(player);
+
+// Ensure new joiners cannot see vanished players
+@EventHandler
+public void onJoin(PlayerJoinEvent event) {
+    vanish.handleJoin(event.getPlayer());
+}
+
+// Clean up on quit
+vanish.clear(player);
+```
+
+---
+
+### IGodManager
+
+Toggle per-player invulnerability (not persisted across restarts).
+
+```java
+IGodManager god = ProudCoreAPI.get().getGodManager();
+
+boolean nowGod = god.toggle(player);
+boolean isGod = god.isGod(player);
+
+// Clean up on quit
+god.clear(player);
 ```
 
 ---
@@ -1042,6 +1186,8 @@ public final class ArenaPlugin extends JavaPlugin implements Listener {
 ### `IPlayerStats`
 | Method | Returns | Description |
 |---|---|---|
+| `getUuid()` | `UUID` | Player UUID |
+| `getName()` | `String` | Last-known username |
 | `getKills()` | `long` | PvP kills |
 | `getDeaths()` | `long` | Total deaths |
 | `getMobKills()` | `long` | Mob kills |
@@ -1054,13 +1200,26 @@ public final class ArenaPlugin extends JavaPlugin implements Listener {
 | `getJumps()` | `long` | Total jumps |
 | `getLastUpdated()` | `long` | Snapshot unix-millis |
 
+### `ICurrency`
+| Method | Returns | Description |
+|---|---|---|
+| `id()` | `String` | Currency id (lowercase) |
+| `nameSingular()` | `String` | Singular display name |
+| `namePlural()` | `String` | Plural display name |
+| `symbol()` | `String` | Display symbol |
+| `startingBalance()` | `double` | Balance on first join |
+| `maxBalance()` | `double` | Max balance or `-1` for unlimited |
+| `decimalPlaces()` | `int` | Decimal places used for formatting |
+| `vaultPrimary()` | `boolean` | True if Vault-bridged currency |
+| `format(double)` | `String` | Formats an amount for display |
+
 ### `ITransaction`
 | Method | Returns | Description |
 |---|---|---|
 | `id()` | `long` | Auto-increment ID |
 | `playerUuid()` | `UUID` | Player |
 | `currencyId()` | `String` | Currency |
-| `type()` | `Type` | `DEPOSIT`, `WITHDRAW`, `TRANSFER_SENT`, etc. |
+| `type()` | `Type` | `DEPOSIT`, `WITHDRAW`, `TRANSFER_SENT`, `TRANSFER_RECEIVED`, `ADMIN_SET`, `CLAN_DEPOSIT`, `CLAN_WITHDRAW` |
 | `amount()` | `double` | Transaction amount (always positive) |
 | `balanceAfter()` | `double` | Balance after this transaction |
 | `reason()` | `String?` | Human-readable reason |
@@ -1080,6 +1239,7 @@ public final class ArenaPlugin extends JavaPlugin implements Listener {
 - **Always call `super.onEnable(ctx)` first** inside `AbstractProudModule` subclasses.
 - **Namespace your scoreboard provider ID** to avoid template key collisions with other plugins.
 - **Never call `saveAll()`** on the main thread in hot code paths — it may block for I/O.
+- **Vanish, god mode, and TPA requests are in-memory**: clear them on quit and re-apply vanish visibility with `IVanishManager.handleJoin(...)`.
 
 ---
 

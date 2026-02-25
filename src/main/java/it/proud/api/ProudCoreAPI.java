@@ -15,7 +15,8 @@ import java.util.Optional;
  *
  * <p>This class exposes a thread-safe singleton that grants external plugins
  * unified access to all ProudCore subsystems: clan management, custom characters,
- * player data, scoreboards, economy, and the external module registry.</p>
+ * player data, scoreboards, economy, homes, warps, spawn, teleport requests,
+ * vanish, god mode, and the external module registry.</p>
  *
  * <h2>Lifecycle</h2>
  * <ol>
@@ -36,6 +37,13 @@ import java.util.Optional;
  * IScoreboardManager sb       = api.getScoreboardManager();
  * IScoreboardRegistry sbReg   = api.getScoreboardRegistry();
  * IModuleRegistry    reg      = api.getModuleRegistry();
+ *
+ * IHomeManager       homes    = api.getHomeManager();
+ * IWarpManager       warps    = api.getWarpManager();
+ * ISpawnManager      spawn    = api.getSpawnManager();
+ * ITpaManager        tpa      = api.getTpaManager();
+ * IVanishManager     vanish   = api.getVanishManager();
+ * IGodManager        god      = api.getGodManager();
  * }</pre>
  *
  * @author  ProudCore Team
@@ -69,6 +77,13 @@ public final class ProudCoreAPI {
     private final IEconomyManager     economyManager;
     private final IModuleRegistry     moduleRegistry;
 
+    private final IHomeManager        homeManager;
+    private final IWarpManager        warpManager;
+    private final ISpawnManager       spawnManager;
+    private final ITpaManager         tpaManager;
+    private final IVanishManager      vanishManager;
+    private final IGodManager         godManager;
+
     /**
      * Publishes the given {@code ProudCoreAPI} instance as the global singleton.
      *
@@ -91,6 +106,12 @@ public final class ProudCoreAPI {
         log.info("{}ClanKillsManager   → {}", PREFIX,
                 api.clanKillsManager != null ? api.clanKillsManager.getClass().getSimpleName() : "disabled");
         log.info("{}ModuleRegistry     → {}", PREFIX, api.moduleRegistry.getClass().getSimpleName());
+        log.info("{}HomeManager        → {}", PREFIX, api.homeManager.getClass().getSimpleName());
+        log.info("{}WarpManager        → {}", PREFIX, api.warpManager.getClass().getSimpleName());
+        log.info("{}SpawnManager       → {}", PREFIX, api.spawnManager.getClass().getSimpleName());
+        log.info("{}TpaManager         → {}", PREFIX, api.tpaManager.getClass().getSimpleName());
+        log.info("{}VanishManager      → {}", PREFIX, api.vanishManager.getClass().getSimpleName());
+        log.info("{}GodManager         → {}", PREFIX, api.godManager.getClass().getSimpleName());
         log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }
 

@@ -74,6 +74,15 @@ public interface IScoreboardRegistry {
     boolean isProviderRegistered(String providerId);
 
     /**
+     * Re-indexes all templates from an already-registered provider.
+     * Use this when the provider's template map has changed at runtime.
+     *
+     * @param providerId the provider namespace to refresh
+     * @return true if the provider was found and refreshed, false otherwise
+     */
+    boolean refreshProvider(String providerId);
+
+    /**
      * Returns the fully-qualified template for the given key, or
      * {@link Optional#empty()} if no template is registered under that key.
      *

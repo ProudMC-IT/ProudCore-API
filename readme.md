@@ -480,6 +480,10 @@ Set<String> providerKeys = registry.getTemplatesByProvider("mymod");
 Set<String> providers = registry.getRegisteredProviders();
 boolean registered = registry.isProviderRegistered("mymod");
 
+// Refresh a provider whose templates changed at runtime
+// Use this instead of re-registering when your provider adds/removes templates dynamically
+registry.refreshProvider("mymod");
+
 // Unregister
 registry.unregisterProvider("mymod");
 
@@ -1238,6 +1242,7 @@ public final class ArenaPlugin extends JavaPlugin implements Listener {
 - **Call `createTableIfNotExists()`** in `onEnable` before any query runs.
 - **Always call `super.onEnable(ctx)` first** inside `AbstractProudModule` subclasses.
 - **Namespace your scoreboard provider ID** to avoid template key collisions with other plugins.
+- **Use `refreshProvider()` for dynamic templates** — if your provider adds or removes templates at runtime (e.g. driven by config), call `registry.refreshProvider(providerId)` instead of re-registering the entire provider. This avoids the "already registered" warning and is semantically cleaner.
 - **Never call `saveAll()`** on the main thread in hot code paths — it may block for I/O.
 - **Vanish, god mode, and TPA requests are in-memory**: clear them on quit and re-apply vanish visibility with `IVanishManager.handleJoin(...)`.
 

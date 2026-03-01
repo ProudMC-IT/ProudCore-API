@@ -77,6 +77,8 @@
 | ✨ **TPA** | Manage `/tpa` and `/tpahere` requests with expiry |
 | 👻 **Vanish** | Hide/reveal players from others (in-memory state) |
 | 🛡️ **God Mode** | Toggle per-player invulnerability (in-memory state) |
+| 🔔 **Notifications** | Send typed notifications to players without knowing the display channel (chat, actionbar, title, bossbar, custom) |
+| 📸 **Snapshots** | Save and restore complete player state: inventory, location, health, economy, gamemode, potion effects, flight |
 | 🧩 **Modules** | Register full external modules with services, DB access, and lifecycle management |
 
 ---
@@ -174,6 +176,8 @@ ProudCoreAPI (singleton)
 ├── ITpaManager           → Teleport request sessions
 ├── IVanishManager        → Per-player vanish state
 ├── IGodManager           → Per-player god mode
+├── INotificationService      → Typed notification delivery across configurable channels
+├── ISnapshotManager          → Complete player state save & restore (per-module ownership)
 └── IModuleRegistry       → External module lifecycle management
 ```
 
@@ -612,6 +616,176 @@ god.clear(player);
 
 ---
 
+### INotificationService
+
+Sistema di notifiche tipizzate. I moduli inviano notifiche senza sapere come verranno mostrate — il server owner configura i canali in `notifications/config.yml`.
+
+**Canali built-in:** `chat`, `actionbar`, `title`, `bossbar`
+**Canali custom:** registrabili da moduli esterni (es. Discord webhook)
+```java
+INotificationService notify = ProudCoreAPI.get().getNotificationService();
+
+// Notifica singolo player
+notify.send(player, Notification.builder()
+    .type("economy.deposit")
+    .title("&a+{amount} {currency}")
+    .body("Il tuo saldo è ora &e{balance}")
+    .placeholder("amount",   "500")
+    .placeholder("currency", "Monete")
+    .placeholder("balance",  "1500")
+    .build());
+
+// Notifica tramite UUID (player può essere offline — viene scartata silenziosamente)
+notify.send(uuid, Notification.builder()
+    .type("arena.eliminated")
+    .body("&cSei stato eliminato!")
+    .build());
+
+// Broadcast a tutti i player online
+notify.broadcast(Notification.builder()
+    .type("server.announcement")
+    .body("&6[Annuncio] &fEvento iniziato!")
+    .build());
+
+// Notifica a tutti i membri del clan online
+notify.sendToClan("spartans", Notification.builder()
+    .type("clan.alert")
+    .body("&cIl vostro territorio è sotto attacco!")
+    .build());
+
+// Notifica a una lista specifica di player
+notify.sendToAll(List.of(player1, player2), Notification.builder()
+    .type("arena.countdown")
+    .body("&eLa partita inizia tra &f{seconds}&e secondi!")
+    .placeholder("seconds", "10")
+    .build());
+
+// Registra un canale custom (es. Discord)
+notify.registerChannel(new NotificationChannel() {
+    public String getId() { return "discord"; }
+    public void deliver(Player player, Notification n) {
+        // invia a Discord webhook
+    }
+});
+
+// Verifica se un canale è registrato
+boolean hasActionbar = notify.isChannelRegistered("actionbar"); // true
+boolean hasDiscord   = notify.isChannelRegistered("discord");   // dipende
+
+// Shortcut per notifiche semplici senza builder
+Notification simple = Notification.simple("generic", "&7Messaggio rapido");
+notify.send(player, simple);
+```
+
+> **Nota:** I placeholder vengono risolti automaticamente sia nel `title` che nel `body`. Il tipo (`type`) è usato dal sistema di routing per scegliere il canale di consegna — configurabile in `notifications/config.yml`.
+
+---
+
+### ISnapshotManager
+
+Salva e ripristina lo stato completo (o parziale) di un player. Ogni snapshot è associato al modulo che lo ha creato — i moduli non vedono gli snapshot degli altri.
+
+#### SnapshotPart — Parti selezionabili
+
+| Valore | Cosa include |
+|---|---|
+| `INVENTORY` | 36 slot inventario principale |
+| `ARMOR` | 4 slot armatura |
+| `OFFHAND` | Slot mano secondaria |
+| `ENDER_CHEST` | 27 slot ender chest |
+| `LOCATION` | Mondo, coordinate, yaw, pitch |
+| `HEALTH` | Max health e health corrente |
+| `FOOD` | Food level e saturation |
+| `EXPERIENCE` | XP level, progress e total XP |
+| `GAME_MODE` | GameMode corrente |
+| `POTION_EFFECTS` | Tutti gli effetti pozione attivi |
+| `FLIGHT` | Flag allow-flight e is-flying |
+| `ECONOMY` | Tutti i saldi da IEconomyManager |
+| `ALL` | Tutto quanto sopra |
+```java
+ISnapshotManager snapshots = ProudCoreAPI.get().getSnapshotManager();
+
+// ── SAVE ────────────────────────────────────────────────────────────────
+
+// Salva TUTTO lo stato del player
+PlayerSnapshot snap = snapshots.save(player, "pre_arena", myModule);
+
+// Salva solo le parti che ti servono
+PlayerSnapshot partial = snapshots.save(player, "inv_only", myModule,
+    SnapshotPart.INVENTORY, SnapshotPart.ARMOR, SnapshotPart.OFFHAND);
+
+// ── RESTORE ─────────────────────────────────────────────────────────────
+
+// Ripristina TUTTO
+snapshots.restore(player, snap);
+
+// Ripristina solo alcune parti (ignora il resto)
+snapshots.restore(player, snap, SnapshotPart.INVENTORY, SnapshotPart.LOCATION);
+
+// Puoi anche ripristinare su un player diverso dall'originale (clone loadout)
+snapshots.restore(otherPlayer, snap);
+
+// ── QUERY ────────────────────────────────────────────────────────────────
+
+// Snapshot più recente per player + modulo
+Optional<PlayerSnapshot> latest = snapshots.getLatest(player.getUniqueId(), myModule);
+latest.ifPresent(s -> {
+    System.out.println("ID:      " + s.getId());
+    System.out.println("Label:   " + s.getLabel());       // "pre_arena"
+    System.out.println("Owner:   " + s.getOwnerId());
+    System.out.println("Created: " + s.getCreatedAt());   // java.time.Instant
+    System.out.println("Parts:   " + s.getCapturedParts());
+});
+
+// Tutti gli snapshot del player per questo modulo (più recente prima)
+List<PlayerSnapshot> all = snapshots.getAll(player.getUniqueId(), myModule);
+
+// Per ID specifico (indipendente dal modulo)
+Optional<PlayerSnapshot> byId = snapshots.getById("550e8400-e29b-...");
+
+// ── DELETE ───────────────────────────────────────────────────────────────
+
+// Elimina un singolo snapshot
+boolean deleted = snapshots.delete(snap.getId());
+
+// Elimina tutti gli snapshot del player per questo modulo
+int count = snapshots.deleteAll(player.getUniqueId(), myModule);
+
+// ── ISPEZIONE PlayerSnapshot ─────────────────────────────────────────────
+
+PlayerSnapshot s = latest.get();
+
+// Controlla se una parte è stata catturata
+boolean hasInv  = s.hasPart(SnapshotPart.INVENTORY);  // true se salvata
+boolean hasEco  = s.hasPart(SnapshotPart.ECONOMY);
+
+// Item data (slot → Base64 ItemStack)
+Map<Integer, String> invData = s.getItemData(SnapshotPart.INVENTORY);
+
+// Location
+PlayerSnapshot.LocationData loc = s.getLocation(); // null se LOCATION non catturata
+if (loc != null) {
+    System.out.printf("%.2f %.2f %.2f in %s%n", loc.x(), loc.y(), loc.z(), loc.world());
+}
+
+// Stato (health, food, xp, gamemode, flight, pozioni)
+PlayerSnapshot.PlayerStateData state = s.getState(); // null se nessuno stato catturato
+if (state != null) {
+    System.out.println("Health: " + state.health() + "/" + state.maxHealth());
+    System.out.println("GameMode: " + state.gameMode());
+    System.out.println("Pozioni: " + state.potionEffects()); // List<String> "TYPE:amp:dur"
+}
+
+// Saldi economia al momento del salvataggio
+Map<String, Double> balances = s.getEconomyBalances(); // currencyId → amount
+```
+
+> **Ownership:** Ogni snapshot appartiene al modulo che lo ha creato. `getLatest()` e `getAll()` filtrano per modulo. Usa `getById()` solo se hai l'ID esatto e vuoi aggirare il filtro.
+
+> **Partial restore:** Puoi salvare `ALL` e ripristinare solo `INVENTORY` + `LOCATION` — le parti non specificate vengono ignorate.
+
+---
+
 ## 🧩 Module System
 
 The module system allows external plugins to register **self-contained units of functionality** that plug directly into ProudCore. Modules get their own lifecycle, logger, data folder, and shared DB access.
@@ -865,6 +1039,8 @@ public final class MyPlugin extends JavaPlugin implements Listener {
         IEconomyManager eco = api.getEconomyManager();
         double coins = eco.getBalance(player.getUniqueId(), "coins");
         player.sendMessage("§6Your balance: §f" + eco.getPrimaryCurrency().format(coins));
+        INotificationService notify   = api.getNotificationService();
+        ISnapshotManager     snapshots = api.getSnapshotManager();
     }
 
     @EventHandler
@@ -1245,6 +1421,11 @@ public final class ArenaPlugin extends JavaPlugin implements Listener {
 - **Use `refreshProvider()` for dynamic templates** — if your provider adds or removes templates at runtime (e.g. driven by config), call `registry.refreshProvider(providerId)` instead of re-registering the entire provider. This avoids the "already registered" warning and is semantically cleaner.
 - **Never call `saveAll()`** on the main thread in hot code paths — it may block for I/O.
 - **Vanish, god mode, and TPA requests are in-memory**: clear them on quit and re-apply vanish visibility with `IVanishManager.handleJoin(...)`.
+- **Chiama sempre `restore` in `onDisable()`** — se il server si spegne mentre un player è in arena, il modulo deve ripristinarlo in `onDisable` altrimenti si ritrova con l'inventario arena al riavvio.
+- **Usa `SnapshotPart` selettivi** quando il tuo modulo non tocca alcune parti dello stato (es. un'arena che non modifica l'economia non ha bisogno di salvare `ECONOMY`). Risparmia spazio in DB e tempo di serializzazione.
+- **Non condividere snapshot tra moduli** — ogni snapshot è owned da un modulo specifico. Se hai bisogno di passare uno snapshot a un altro modulo, usa `getById()` con l'ID che ti sei salvato.
+- **Il tipo di notifica (`type`) è il routing key** — sceglilo con un namespace per evitare collisioni: `"arena.join"`, `"economy.deposit"`, non `"join"` o `"deposit"`.
+- **I canali di notifica sono configurabili dal server owner** — non assumere che il tuo tipo venga mostrato come title o actionbar. Il fallback è sempre `chat`. Se vuoi forzare un canale specifico per test, usa `registerChannel` con un canale dedicato al tuo modulo.
 
 ---
 

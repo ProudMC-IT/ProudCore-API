@@ -83,6 +83,8 @@ public final class ProudCoreAPI {
     private final ITpaManager         tpaManager;
     private final IVanishManager      vanishManager;
     private final IGodManager         godManager;
+    private final INotificationService notificationService;
+    private final ISnapshotManager snapshotManager;
 
     /**
      * Publishes the given {@code ProudCoreAPI} instance as the global singleton.
@@ -112,6 +114,8 @@ public final class ProudCoreAPI {
         log.info("{}TpaManager         → {}", PREFIX, api.tpaManager.getClass().getSimpleName());
         log.info("{}VanishManager      → {}", PREFIX, api.vanishManager.getClass().getSimpleName());
         log.info("{}GodManager         → {}", PREFIX, api.godManager.getClass().getSimpleName());
+        log.info("{}NotificationService   → {}", PREFIX, api.notificationService.getClass().getSimpleName());
+        log.info("{}SnapshotManager       → {}", PREFIX, api.snapshotManager.getClass().getSimpleName());
         log.info("{}{}{}{}", PREFIX, GREEN, "Ready — external plugins can now call ProudCoreAPI.get()", RESET);
     }
 
